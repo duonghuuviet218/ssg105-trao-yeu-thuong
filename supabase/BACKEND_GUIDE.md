@@ -28,7 +28,7 @@ Theo tài liệu kiến trúc, dự án phục vụ chiến dịch cộng đồn
 
 ### Bảng 1: `wishes` (DATA-001)
 - **Mục đích:** Lưu lời chúc người dùng gửi cho các bé chó/mèo.
-- **Quy tắc cốt lõi:** Mặc định lời chúc mới phải có `status = 'pending'`. Chỉ lời chúc `status = 'approved'` mới được hiển thị công khai ở Trạm Yêu Thương.
+- **Quy tắc mới:** Lời chúc gửi lên sẽ **tự động duyệt ngay lập tức** (`status = 'approved'`) để người dùng thấy ngay trên Trạm Yêu Thương, không cần review thủ công.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
@@ -36,7 +36,7 @@ Theo tài liệu kiến trúc, dự án phục vụ chiến dịch cộng đồn
 | `animal_type` | `VARCHAR(10)` | NOT NULL, CHECK in `('dog', 'cat')` | Loại động vật chọn |
 | `animal_id` | `VARCHAR(50)` | NOT NULL | ID nhân vật (vd: `dog-1`, `cat-2`) |
 | `message` | `VARCHAR(200)` | NOT NULL, từ 2 đến 200 ký tự | Nội dung lời chúc |
-| `status` | `VARCHAR(20)` | NOT NULL, DEFAULT `'pending'`, CHECK in `('pending', 'approved', 'rejected')` | Trạng thái duyệt |
+| `status` | `VARCHAR(20)` | NOT NULL, DEFAULT `'approved'`, CHECK in `('pending', 'approved', 'rejected')` | Trạng thái hiển thị |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | Thời gian gửi |
 
 ### Bảng 2: `rescue_centers` (DATA-002)
@@ -129,15 +129,15 @@ Theo tài liệu kiến trúc, dự án phục vụ chiến dịch cộng đồn
 
 ---
 
-## 4. HƯỚNG DẪN QUẢN TRỊ & KIỂM DUYỆT (ADMIN WORKFLOW)
+## 4. HƯỚNG DẪN QUẢN TRỊ & HẬU KIỂM (ADMIN WORKFLOW)
 
-Trong giai đoạn MVP, nhóm chưa cần code Admin Dashboard riêng để tiết kiệm thời gian. Bạn và team quản trị nội dung sẽ kiểm duyệt trực tiếp trên **Supabase Dashboard**:
+Hiện tại hệ thống đã **tự động duyệt (auto-approve)** tất cả lời chúc gửi lên để hiển thị ngay trên website. Bạn và team không cần ngồi canh duyệt từng lời chúc nữa!
 
+Nếu sau này có lời chúc nào mang tính spam, thô tục hoặc quảng cáo không mong muốn:
 1. Mở menu **Table Editor** -> chọn bảng **`wishes`**.
-2. Bấm **Filter** -> thêm bộ lọc: `status` `eq` `'pending'`.
-3. Đọc nội dung cột `message`:
-   - Nếu lời chúc tích cực, phù hợp thuần phong mỹ tục: Click đúp vào ô `pending`, đổi thành **`approved`**. Ngay lập tức lời chúc sẽ xuất hiện trên màn hình Trạm Yêu Thương của người dùng!
-   - Nếu lời chúc mang tính spam, thô tục, quảng cáo: Đổi thành **`rejected`**.
+2. Tìm dòng chứa lời chúc xấu đó.
+3. Click đúp vào ô `approved` ở cột `status` và đổi thành **`rejected`**.
+4. Lời chúc đó sẽ ngay lập tức biến mất khỏi Trạm Yêu Thương của người dùng.
 
 ---
 
@@ -151,7 +151,7 @@ Dưới đây là các hàm query mẫu bằng `@supabase/supabase-js` để Fro
 import { supabase } from '@/lib/supabase';
 import { Wish, CreateWishInput } from '@/supabase/types_database';
 
-// 1. Gửi lời chúc mới (Mặc định RLS ép status = 'pending')
+// 1. Gửi lời chúc mới (Tự động approved và hiển thị ngay)
 export async function createWish(input: CreateWishInput) {
   const { data, error } = await supabase
     .from('wishes')
@@ -160,7 +160,7 @@ export async function createWish(input: CreateWishInput) {
         animal_type: input.animal_type,
         animal_id: input.animal_id,
         message: input.message.trim(),
-        status: 'pending',
+        status: 'approved',
       },
     ])
     .select()
